@@ -319,6 +319,16 @@ func (c *Client) SetHeader(key, value string) {
 	conn.mu.Unlock()
 }
 
+// NewNamedParams is a qucick way to create NamedParams.
+func NewNamedParams(argsObject interface{}) NamedParams {
+	return NamedParams{Value: argsObject}
+}
+
+// NamedParams wraps a struct or map value to provide RPC params as an object.
+type NamedParams struct {
+	Value interface{}
+}
+
 // Call performs a JSON-RPC call with the given arguments and unmarshals into
 // result if no error occurred.
 //
@@ -545,8 +555,12 @@ func (c *Client) SupportsSubscriptions() bool {
 	return !c.isHTTP
 }
 
-func (c *Client) newMessage(method string, paramsIn ...interface{}) (*jsonrpcMessage, error) {
+func (c *Client) newMessage(method string, args ...interface{}) (*jsonrpcMessage, error) {
 	msg := &jsonrpcMessage{Version: vsn, ID: c.nextID(), Method: method}
+	var paramsIn interface{} = args
+	if len(args) == 1 && reflect.TypeOf(args[0]) == reflect.TypeOf(NamedParams{}) {
+		paramsIn = args[0].(NamedParams).Value
+	}
 	if paramsIn != nil { // prevent sending "params":null
 		var err error
 		if msg.Params, err = json.Marshal(paramsIn); err != nil {
